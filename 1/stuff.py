@@ -11,7 +11,6 @@ import sys
 import csv
 import os
 import optparse
-import psycopg2.extras
 from datetime import datetime
 import logging
 import json
