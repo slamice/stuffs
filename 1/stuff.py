@@ -34,9 +34,12 @@
 
 import sys
 import csv
+import re
 import os
 import optparse
-from datetime import datetime
+import decimal
+from datetime import datetime, date, timedelta
+import calendar
 import logging
 import json
 
@@ -51,46 +54,79 @@ def determine_revenue_and_capacity(csvfile, given_date):
             if row[0] == 'Capacity':
                 continue
 
-            print 'startDay '+ row[2]
-            print 'endDay '+ row[3]
-
-            capacity = row[0]
-            monthlyPrice = row[1]
-            startDay = datetime.strptime(row[2], '%M/%d/%Y').date()
-            endDay = datetime.strptime(row[3], '%M/%d/%Y').date() if row[3] else ''
+            capacity = int(row[0])
+            monthlyPrice = int(row[1])
+            startDay = datetime.strptime(row[2], '%m/%d/%Y').date()
+            endDay = datetime.strptime(row[3], '%m/%d/%Y').date() if row[3] else ''
 
             # Check if the month and year is between between the reservation times
-            print between_dates(startDay, endDay, given_date)
+            if between_dates(startDay, endDay, given_date):
+                # For each reservation, find the last day they are paying and teh price per day
+                end_of_month = end_of_given_month(given_date)
+                print('end of month: ' + str(end_of_month))
 
-            # Count days until end of the month
+                daily_price = price_per_day(end_of_month.day, monthlyPrice)
+                print('daily price: ' + str(daily_price))
 
+                # Find all the days people are reserving for
+                days_paying = end_of_month.day - startDay.day
+                print('days paying: ' + str(days_paying))
 
-    return 
+                final_monthly_price = capacity * (daily_price * days_paying) # * number of years paying?
+                print('Final monthly price: ' + str(final_monthly_price))
 
-def between_dates(start, end, given_date):
-    if type(end) is datetime:
-        return True if start < given_date < end else False 
-    
-    elif start < given_date:
-        return True
-    
-    return False
-
-    
-
-
-#{MM-YYYY:{day:revenue, capacity}}
-
-#reservation {}
+                final_monthly_price += final_monthly_price
+                #final_capacity += capacity
 
 
-# basically just overlapping reservations, like a calendar
-# We define a reservation by a key start and end date. We
-# check if each reservation falls within the date range
-# specified
+    print 'expected revenue: ${0}, expected total capacity of the unreserved offices: {1}'.format(str(final_monthly_price), str(final_capacity))
 
-#def revenue_and_capacity(month, year, data):
-#   return 
+
+# find number of times a specific month happpens between two dates
+#def between_dates(start, end, given_date):
+#
+#    print '-----------'
+#    print start.year
+#    print given_date.year
+#    print end.year if end != '' else ''
+#    print ''
+#    print start.month
+#    print given_date.month
+#    print end.month if end != '' else ''
+#    print '-----------'
+#
+#    if end != '' and (start.year <= given_date.year <= end.year) and (start.month <= given_date.month <= end.month):
+#        return True
+#    
+#    if end == '' and (start.year <= given_date.year) and (start.month <= given_date.month):
+#        return True
+#    
+#    return False
+
+# Give the month and price, how much per day
+def price_per_day(days_in_month, monthlyPrice):
+    return monthlyPrice / float(days_in_month)
+
+# Find the last calendar day of the given month
+def end_of_given_month(given_date):
+    last_day = calendar.monthrange(given_date.year, given_date.month)[1]
+    return datetime(given_date.year, given_date.month, last_day).date()
+
+
+def last_day_of_month(end, given_end_date):
+    # 1. If the reservation end date is not specified
+    # 2. If the month is different, take the last day of the given month
+    #
+    # return the last day of the given month
+    if end == '' or given_date.month != end.month:
+        return end_of_month
+
+    # If the month is the same, take the highest last day
+    if (given_date.month == end.month):
+        return end_of_month if end_of_month.day > end.day else end
+
+    # Otherwise, error like mad
+    sys.exit('End of month math is wrong!')
 
 
 # python stuff.py -C data.csv -D 2000-01
@@ -115,11 +151,9 @@ if __name__ == '__main__':
         sys.exit('You must enter a csv file')
 
     if options.given_date is None:
-        sys.exit('You must enter a month you would liek more info about')
+        sys.exit('You must enter a month you would like more info about')
 
     # validate if can be converted to a date
-    given_date =  datetime.strptime(options.given_date, '%M/%Y').date()
+    given_date =  datetime.strptime(options.given_date, '%Y-%m').date()
 
-    determine_revenue_and_capacity(options.csv, given_date)
-
-    logger.info('** Finished updating... **')
+    print(determine_revenue_and_capacity(options.csv, given_date))
